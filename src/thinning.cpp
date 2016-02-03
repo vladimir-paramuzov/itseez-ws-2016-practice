@@ -1,5 +1,6 @@
 #include "skeleton_filter.hpp"
 #include <opencv2/imgproc/imgproc.hpp>
+#include <iostream>
 
 static void GuoHallIteration(cv::Mat& im, int iter)
 {
@@ -58,7 +59,7 @@ void GuoHallThinning(const cv::Mat& src, cv::Mat& dst)
 // Place optimized version here
 //
 
-static void GuoHallIteration_optimized(cv::Mat& im, int iter)
+static void GuoHallIteration_optimized(cv::Mat& im, int iter, const uchar* table)
 {
     cv::Mat marker = cv::Mat::zeros(im.size(), CV_8UC1);
 
@@ -77,35 +78,59 @@ static void GuoHallIteration_optimized(cv::Mat& im, int iter)
             uchar p7 = im.at<uchar>(i+1, j-1);
             uchar p8 = im.at<uchar>(i, j-1);
             uchar p9 = im.at<uchar>(i-1, j-1);
-
-            int C  = (!p2 & (p3 | p4)) + (!p4 & (p5 | p6)) +
-                     (!p6 & (p7 | p8)) + (!p8 & (p9 | p2));
-            int N1 = (p9 | p2) + (p3 | p4) + (p5 | p6) + (p7 | p8);
-            int N2 = (p2 | p3) + (p4 | p5) + (p6 | p7) + (p8 | p9);
-            int N  = N1 < N2 ? N1 : N2;
-            int m  = iter == 0 ? ((p6 | p7 | !p9) & p8) : ((p2 | p3 | !p5) & p4);
-
-            if (C == 1 && (N >= 2 && N <= 3) & (m == 0))
-                marker.at<uchar>(i,j) = 1;
+			uchar code = p2 * 1 +
+				   p3 * 2 +
+				   p4 * 4 +
+				   p5 * 8 +
+				   p6 * 16 +
+				   p7 * 32 +
+				   p8 * 64 +
+				   p9 * 128;
+            marker.at<uchar>(i,j) = table[code];
         }
     }
 
     im &= ~marker;
 }
 
+void getNeighborsTable(uchar* table, int iter) {
+	for (int j = 0; j < 256; j++) {
+		int code = j;
+		int p2 = (code & 1) >> 0;
+		int p3 = (code & 2) >> 1;
+		int p4 = (code & 4) >> 2;
+		int p5 = (code & 8) >> 3;
+		int p6 = (code & 16) >> 4;
+		int p7 = (code & 32) >> 5;
+		int p8 = (code & 64) >> 6;
+		int p9 = (code & 128) >> 7;
+
+		int C  = (!p2 & (p3 | p4)) + (!p4 & (p5 | p6)) +
+                    (!p6 & (p7 | p8)) + (!p8 & (p9 | p2));
+        int N1 = (p9 | p2) + (p3 | p4) + (p5 | p6) + (p7 | p8);
+        int N2 = (p2 | p3) + (p4 | p5) + (p6 | p7) + (p8 | p9);
+        int N  = N1 < N2 ? N1 : N2;
+        int m  = iter == 0 ? ((p6 | p7 | !p9) & p8) : ((p2 | p3 | !p5) & p4);
+
+        table[j] = (C == 1 && (N >= 2 && N <= 3) & (m == 0))? 1 : 0;
+	}
+}
 void GuoHallThinning_optimized(const cv::Mat& src, cv::Mat& dst)
 {
     CV_Assert(CV_8UC1 == src.type());
 
     dst = src / 255;
-
     cv::Mat prev = cv::Mat::zeros(src.size(), CV_8UC1);
     cv::Mat diff;
-
+	uchar neighborsTable_iter0[256] = {0};
+	uchar neighborsTable_iter1[256] = {0};
+	getNeighborsTable(neighborsTable_iter0, 0);
+	getNeighborsTable(neighborsTable_iter1, 1);
+	
     do
     {
-        GuoHallIteration_optimized(dst, 0);
-        GuoHallIteration_optimized(dst, 1);
+        GuoHallIteration_optimized(dst, 0, neighborsTable_iter0);
+        GuoHallIteration_optimized(dst, 1, neighborsTable_iter1);
         cv::absdiff(dst, prev, diff);
         dst.copyTo(prev);
     }
