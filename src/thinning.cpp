@@ -94,26 +94,50 @@ static void GuoHallIteration_optimized(cv::Mat& im, int iter, const uchar* table
 }
 
 void getNeighborsTable(uchar* table, int iter) {
-	for (int j = 0; j < 256; j++) {
-		int code = j;
-		int p2 = (code & 1) >> 0;
-		int p3 = (code & 2) >> 1;
-		int p4 = (code & 4) >> 2;
-		int p5 = (code & 8) >> 3;
-		int p6 = (code & 16) >> 4;
-		int p7 = (code & 32) >> 5;
-		int p8 = (code & 64) >> 6;
-		int p9 = (code & 128) >> 7;
+	if (iter == 0) {
+		for (int j = 0; j < 256; j++) {
+			int code = j;
+			int p2 = (code & 1) >> 0;
+			int p3 = (code & 2) >> 1;
+			int p4 = (code & 4) >> 2;
+			int p5 = (code & 8) >> 3;
+			int p6 = (code & 16) >> 4;
+			int p7 = (code & 32) >> 5;
+			int p8 = (code & 64) >> 6;
+			int p9 = (code & 128) >> 7;
 
-		int C  = (!p2 & (p3 | p4)) + (!p4 & (p5 | p6)) +
-                    (!p6 & (p7 | p8)) + (!p8 & (p9 | p2));
-        int N1 = (p9 | p2) + (p3 | p4) + (p5 | p6) + (p7 | p8);
-        int N2 = (p2 | p3) + (p4 | p5) + (p6 | p7) + (p8 | p9);
-        int N  = N1 < N2 ? N1 : N2;
-        int m  = iter == 0 ? ((p6 | p7 | !p9) & p8) : ((p2 | p3 | !p5) & p4);
+			int C  = (!p2 & (p3 | p4)) + (!p4 & (p5 | p6)) +
+						(!p6 & (p7 | p8)) + (!p8 & (p9 | p2));
+			int N1 = (p9 | p2) + (p3 | p4) + (p5 | p6) + (p7 | p8);
+			int N2 = (p2 | p3) + (p4 | p5) + (p6 | p7) + (p8 | p9);
+			int N  = N1 < N2 ? N1 : N2;
+			int m  = ((p6 | p7 | !p9) & p8);
 
-        table[j] = (C == 1 && (N >= 2 && N <= 3) & (m == 0))? 1 : 0;
+			table[j] = (C == 1 && (N >= 2 && N <= 3) & (m == 0))? 1 : 0;
+		}
+	} else {
+		for (int j = 0; j < 256; j++) {
+			int code = j;
+			int p2 = (code & 1) >> 0;
+			int p3 = (code & 2) >> 1;
+			int p4 = (code & 4) >> 2;
+			int p5 = (code & 8) >> 3;
+			int p6 = (code & 16) >> 4;
+			int p7 = (code & 32) >> 5;
+			int p8 = (code & 64) >> 6;
+			int p9 = (code & 128) >> 7;
+
+			int C  = (!p2 & (p3 | p4)) + (!p4 & (p5 | p6)) +
+						(!p6 & (p7 | p8)) + (!p8 & (p9 | p2));
+			int N1 = (p9 | p2) + (p3 | p4) + (p5 | p6) + (p7 | p8);
+			int N2 = (p2 | p3) + (p4 | p5) + (p6 | p7) + (p8 | p9);
+			int N  = N1 < N2 ? N1 : N2;
+			int m  = ((p2 | p3 | !p5) & p4);
+
+			table[j] = (C == 1 && (N >= 2 && N <= 3) & (m == 0))? 1 : 0;
+		}
 	}
+
 }
 void GuoHallThinning_optimized(const cv::Mat& src, cv::Mat& dst)
 {
