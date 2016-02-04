@@ -103,6 +103,22 @@ TEST(skeleton, isImageHaveProperSizeAfterResize)
 	EXPECT_EQ(small_size.width, result.size[1]);
 }
 
+TEST(skeleton, isImageSizeNotChangedAfterResizeToSameSize)
+{
+	cv::Size size(10, 10);
+    Mat bgr(size, CV_8UC1);
+    randu(bgr, Scalar::all(0), Scalar::all(255));
+
+	Mat result;
+
+    ImageResize(bgr, result, size);
+
+	Mat diff;
+	cv::compare(bgr, result, diff, cv::CMP_NE);
+    int nz = cv::countNonZero(diff); 
+	EXPECT_EQ(0, nz);
+}
+
 TEST(skeleton, isImageHaveSameColorAfterResize)
 {
 	cv::Scalar color = 0.5;
