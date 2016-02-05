@@ -52,6 +52,11 @@ void ConvertColor_BGR2GRAY_BT709(const cv::Mat& src, cv::Mat& dst)
     }
 }
 
+#define FP_TYPE int32_t
+#define SHIFT 16
+#define SHIFT1 12
+#define SHIFT2 8
+
 void ConvertColor_BGR2GRAY_BT709_fpt(const cv::Mat& src, cv::Mat& dst)
 {
     CV_Assert(CV_8UC3 == src.type());
@@ -67,8 +72,17 @@ void ConvertColor_BGR2GRAY_BT709_fpt(const cv::Mat& src, cv::Mat& dst)
 
         for (int x = 0; x < sz.width; x++)
         {
-            float color = 0.2126 * psrc[x][2-bidx] + 0.7152 * psrc[x][1] + 0.0722 * psrc[x][bidx];
-            pdst[x] = (int)(color + 0.5);
+            FP_TYPE color = round(0.2126 * (float)(1 << SHIFT)) * psrc[x][2-bidx] + 
+                            round(0.7152 * (float)(1 << SHIFT)) * psrc[x][1] + 
+                            round(0.0722 * (float)(1 << SHIFT)) * psrc[x][bidx] + 
+                            round(0.5 * (float)(1 << SHIFT));
+            pdst[x] = (uchar)std::max(0, std::min(255, (color >> SHIFT)));
+
+            /*FP_TYPE color = round(0.2126 * (float)(1 << SHIFT1)) * psrc[x][2-bidx] + ((1 << (SHIFT1 - SHIFT2 - 1)) >> (SHIFT1 - SHIFT2)) + 
+                            round(0.7152 * (float)(1 << SHIFT1)) * psrc[x][1] + ((1 << (SHIFT1 - SHIFT2 - 1)) >> (SHIFT1 - SHIFT2)) + 
+                            round(0.0722 * (float)(1 << SHIFT1)) * psrc[x][bidx] + ((1 << (SHIFT1 - SHIFT2 - 1)) >> (SHIFT1 - SHIFT2)) + 
+                            round(0.5 * (float)(1 << SHIFT)) + ((1 << (SHIFT1 - SHIFT2 - 1)) >> (SHIFT1 - SHIFT2)); 
+            pdst[x] = (uchar)std::max(0, std::min(255, ((color + (1 << (SHIFT2 - 1))) >> SHIFT2)));*/
         }
     }
 }
